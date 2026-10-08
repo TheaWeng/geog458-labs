@@ -86,16 +86,15 @@
             mymap.setConfigProperty('basemap', 'showPointOfInterestLabels', false);
 
 
-            // Hide road labels to create a cleaner and less text-heavy map.
-            // This is useful when the map's main purpose is to emphasize geographic
-            // features rather than individual street names.
-            mymap.setConfigProperty('basemap', 'showRoadLabels', false);
+          // Set showRoadLabels to false to hide road and street labels.
+// This reduces visual clutter and makes other geographic features easier to see.
+// This is useful when focusing on the overall map rather than specific streets.
+mymap.setConfigProperty('basemap', 'showRoadLabels', false);
 
-
-            // Hide 3D objects such as buildings and other three-dimensional features.
-            // This creates a simpler 2D map that can make the overall map design
-            // easier to read and visually less distracting.
-            mymap.setConfigProperty('basemap', 'show3dObjects', false);
+// Set show3dObjects to false to hide 3D buildings and other 3D objects.
+// This creates a simpler 2D map and reduces visual distractions.
+// This is useful when the map is being used for a clear overview or spatial analysis.
+mymap.setConfigProperty('basemap', 'show3dObjects', false);
 
         });
 
