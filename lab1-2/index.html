@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <!-- Define the character encoding used by the webpage. -->
+    <meta charset="utf-8" />
+
+    <!-- Set the title displayed in the browser tab. -->
+    <title>My First Map</title>
+
+    <!-- Make the webpage responsive to the screen size. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Load Mapbox GL JS CSS so the map and its controls display correctly. -->
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.css" rel="stylesheet">
+
+    <!-- Load the Mapbox GL JS library that provides the interactive map functionality. -->
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js"></script>
+
+    <style>
+        /* Remove the default margin and padding from the webpage. */
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Make the map fill the entire browser window. */
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Create the HTML container where Mapbox will render the interactive map. -->
+    <div id="map"></div>
+
+    <script>
+
+        // Connect the Mapbox GL JS library to the public access token from the Mapbox account.
+        mapboxgl.accessToken = 'pk.eyJ1IjoidGhlYXdlbmciLCJhIjoiY211enRxdXg1MGE1ZzJ3cHJiY25jd3AzeSJ9.hu6_p9WGMdUXAuteHViv2w';
+
+        // Initialize the Mapbox map and render it inside the HTML element with the ID "map".
+        const mymap = new mapboxgl.Map({
+
+            // Specify the HTML element that will contain the map.
+            container: 'map',
+
+            // Use Mapbox Standard as the basemap style.
+            // The Standard style allows us to configure basemap properties at runtime.
+            style: 'mapbox://styles/mapbox/standard',
+
+            // Center the map on the University of Washington campus.
+            // Coordinates are written as [longitude, latitude].
+            center: [-122.3035, 47.6553],
+
+            // Set the initial zoom level so the UW campus is clearly visible.
+            zoom: 14
+        });
+
+
+        // Add a fullscreen control so the user can expand the map to fill the screen.
+        mymap.addControl(new mapboxgl.FullscreenControl());
+
+
+        // Add navigation controls that allow the user to zoom in, zoom out,
+        // and reset the map orientation with the compass.
+        mymap.addControl(new mapboxgl.NavigationControl());
+
+
+        // Wait until the Mapbox Standard style has finished loading
+        // before changing its basemap configuration properties.
+        mymap.on('style.load', () => {
+
+            // Change the map lighting from the default daytime appearance to dusk.
+            // This creates a darker evening-style map appearance.
+            mymap.setConfigProperty('basemap', 'lightPreset', 'dusk');
+
+
+            // Hide points of interest such as businesses and other POI labels.
+            // This reduces visual clutter and makes the main map features easier to see.
+            mymap.setConfigProperty('basemap', 'showPointOfInterestLabels', false);
+
+
+            // Hide road labels to create a cleaner and less text-heavy map.
+            // This is useful when the map's main purpose is to emphasize geographic
+            // features rather than individual street names.
+            mymap.setConfigProperty('basemap', 'showRoadLabels', false);
+
+
+            // Hide 3D objects such as buildings and other three-dimensional features.
+            // This creates a simpler 2D map that can make the overall map design
+            // easier to read and visually less distracting.
+            mymap.setConfigProperty('basemap', 'show3dObjects', false);
+
+        });
+
+    </script>
+
+</body>
+
+</html>
