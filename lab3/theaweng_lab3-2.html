@@ -3,83 +3,232 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Lab 3: Puget Sound PM2.5</title>
-  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.15.0/dist/maplibre-gl.css">
+  <title>Lab 3: Seattle Tree Canopy and Parks | Thea Weng</title>
+
+  <link rel="stylesheet"
+    href="https://unpkg.com/maplibre-gl@6.15.0/dist/maplibre-gl.css">
+
   <style>
-    body { margin: 0; font: 14px/1.5 Arial, sans-serif; color: #182e3a; }
-    #map { position: absolute; inset: 0; }
-    #panel { position: absolute; top: 12px; left: 12px; padding: 16px;
-      width: 260px; max-width: calc(100% - 100px); background: white;
-      max-height: calc(100% - 80px); overflow: auto; border-radius: 6px; }
-    h1 { margin: 0 0 8px; font-size: 19px; }
-    p { margin: 8px 0; }
-    .ramp { height: 14px; background: linear-gradient(to right,
-      #ffffb2, #fecc5c, #fd8d3c, #f03b20, #bd0026); }
-    .values { display: flex; justify-content: space-between; }
-    .maplibregl-popup-content { white-space: pre-line; }
+    body {
+      margin: 0;
+      font: 14px/1.5 Arial, sans-serif;
+      color: #203b2d;
+    }
+
+    #map {
+      position: absolute;
+      inset: 0;
+    }
+
+    #panel {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      padding: 16px;
+      width: 260px;
+      max-width: calc(100% - 100px);
+      max-height: calc(100% - 80px);
+      overflow: auto;
+      background: white;
+      border-radius: 6px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 19px;
+    }
+
+    p {
+      margin: 8px 0;
+    }
+
+    label {
+      display: block;
+      margin: 8px 0;
+    }
+
+    .swatch {
+      display: inline-block;
+      width: 22px;
+      height: 12px;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+
+    .canopy {
+      background: #008000;
+    }
+
+    .park {
+      border: 2px solid #b45309;
+      background: #fef3c7;
+    }
+
+    .note {
+      font-size: 12px;
+      color: #526157;
+    }
+
+    a {
+      color: #286347;
+    }
+
+    .maplibregl-popup-content {
+      white-space: pre-line;
+    }
   </style>
 </head>
+
 <body>
   <div id="map"></div>
+
   <section id="panel">
-    <h1>Puget Sound PM2.5</h1>
-    <p>July 5, 2025 | U.S. EPA AirData</p>
-    <p id="status">Step 1: map frame ready; add the basemap next.</p>
-    <div id="surface-control" hidden>
-      <label><input id="show-surface" type="checkbox" checked> Show interpolation</label>
+    <h1>Seattle Tree Canopy &amp; Parks</h1>
+    <p>By Thea Weng</p>
+
+    <p>
+      Explore 2021 tree canopy and park properties in central
+      and southern Seattle. This map helps residents and students
+      compare canopy patterns within and around parks.
+    </p>
+
+    <p id="status">Loading map…</p>
+
+    <div id="canopy-control" hidden>
+      <label>
+        <input id="show-canopy" type="checkbox" checked>
+        Show tree canopy
+      </label>
     </div>
-    <div id="station-control" hidden>
-      <label><input id="show-stations" type="checkbox" checked> Show stations</label>
+
+    <div id="park-control" hidden>
+      <label>
+        <input id="show-parks" type="checkbox" checked>
+        Show park boundaries
+      </label>
     </div>
+
     <div id="legend" hidden>
-      <p><strong>Estimated PM2.5 (µg/m³)</strong></p>
-      <div class="ramp"></div>
-      <div class="values"><span>4</span><span>9</span><span>14</span></div>
-      <p>IDW estimates between monitors; not AQI.</p>
+      <p><strong>Legend</strong></p>
+
+      <p>
+        <span class="swatch canopy"></span>
+        Mapped tree canopy — 2021
+      </p>
+
+      <p>
+        <span class="swatch park"></span>
+        Park property boundaries
+      </p>
+
+      <p class="note">
+        Canopy is shown as presence, not percentage or tree height.
+        Areas outside the exported canopy extent have no canopy
+        information on this map.
+      </p>
     </div>
+
+    <p><strong>Sources and method</strong></p>
+
+    <p class="note">
+      Tree canopy: City of Seattle,
+      TreeCanopy_2021_Seattle (2021).
+      Canopy polygons were styled in green and rendered into
+      transparent PNG tiles in QGIS.
+    </p>
+
+    <p class="note">
+      Parks: City of Seattle, Park Boundary (details).
+      Downloaded October 25, 2026.
+      A park may contain multiple property parcels.
+    </p>
+
+    <p class="note">
+      Basemap: Mapbox Outdoors, adapted in Mapbox Studio
+      and exported through QGIS.
+      Both raster layers use local 256-pixel XYZ tiles,
+      zoom levels 8–12.
+    </p>
+
+    <p class="note">
+      Canopy and park data represent different dates.
+      This map does not calculate canopy percentages
+      or measure park accessibility.
+    </p>
+
+    <p class="note">
+      Source:
+      <a href="https://data-seattlecitygis.opendata.arcgis.com/"
+         target="_blank" rel="noopener">
+        Seattle GeoData
+      </a>
+    </p>
   </section>
 
   <script type="module">
-    import * as maplibregl from 'https://unpkg.com/maplibre-gl@6.15.0/dist/maplibre-gl.mjs';
+    import * as maplibregl from
+      'https://unpkg.com/maplibre-gl@6.15.0/dist/maplibre-gl.mjs';
+
+    // Outer bounds of the verified canopy tiles at zoom 12:
+    // x = 654–657; y = 1429–1432.
+    const tileBounds = [
+      -122.51953125, 47.45780853,
+      -122.16796875, 47.69497434
+    ];
 
     const map = new maplibregl.Map({
       container: 'map',
+
       style: {
         version: 8,
         sources: {},
         layers: [{
           id: 'background',
           type: 'background',
-          paint: { 'background-color': '#edf1f0' }
+          paint: {
+            'background-color': '#edf1f0'
+          }
         }]
       },
-      center: [-122.3321, 47.6062],
-      zoom: 10,
+
+      center: [-122.3321, 47.60],
+      zoom: 11,
       minZoom: 8,
       maxZoom: 12,
-      maxBounds: [[-122.75, 47.10], [-122.05, 48.15]]
+
+      maxBounds: [
+        [-122.46, 47.50],
+        [-122.24, 47.69]
+      ]
     });
 
     map.addControl(new maplibregl.NavigationControl());
-    map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }));
+
+    map.addControl(new maplibregl.ScaleControl({
+      unit: 'metric'
+    }));
 
     map.on('error', (event) => {
+      const source = event.sourceId || 'map';
+
       document.getElementById('status').textContent =
-        'Load error: check the file path and browser Console.';
+        `Load error (${source}): check file paths and browser Console.`;
+
       console.error(event.error);
     });
 
     map.on('load', () => {
-      // Step 2: basemap tiles
+      // Step 2: local basemap tiles
       map.addSource('basemap-tiles', {
         type: 'raster',
-        tiles: ['assets/mapbox-guided/{z}/{x}/{y}.png'],
+        tiles: ['assets/mapbox-independent/{z}/{x}/{y}.png'],
         tileSize: 256,
         scheme: 'xyz',
         minzoom: 8,
         maxzoom: 12,
-        bounds: [-122.75, 47.10, -122.05, 48.15],
-        attribution: '© Mapbox © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        bounds: tileBounds,
+        attribution:
+          '© Mapbox © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
       });
 
       map.addLayer({
@@ -92,12 +241,108 @@
         }
       });
 
-      // Step 3: insert the interpolation tile code here.
+      // Step 3: local tree canopy tiles
+      map.addSource('canopy-tiles', {
+        type: 'raster',
+        tiles: ['assets/tree-canopy/{z}/{x}/{y}.png'],
+        tileSize: 256,
+        scheme: 'xyz',
+        minzoom: 8,
+        maxzoom: 12,
+        bounds: tileBounds,
+        attribution:
+          'Tree canopy: City of Seattle, 2021; map by Thea Weng'
+      });
 
-      // Step 4: insert the station and popup code here.
+      map.addLayer({
+        id: 'tree-canopy',
+        type: 'raster',
+        source: 'canopy-tiles',
+        paint: {
+          'raster-opacity': 0.85,
+          'raster-fade-duration': 0
+        }
+      });
+
+      document.getElementById('canopy-control').hidden = false;
+      document.getElementById('legend').hidden = false;
+
+      document.getElementById('show-canopy')
+        .addEventListener('change', (event) => {
+          map.setLayoutProperty(
+            'tree-canopy',
+            'visibility',
+            event.target.checked ? 'visible' : 'none'
+          );
+        });
+
+      // Step 4: park polygons and popups
+      map.addSource('park-data', {
+        type: 'geojson',
+        data: 'data/parks.geojson',
+        attribution: 'Park boundaries: City of Seattle'
+      });
+
+      map.addLayer({
+        id: 'parks-fill',
+        type: 'fill',
+        source: 'park-data',
+        paint: {
+          'fill-color': '#fbbf24',
+          'fill-opacity': 0.12
+        }
+      });
+
+      map.addLayer({
+        id: 'parks-outline',
+        type: 'line',
+        source: 'park-data',
+        paint: {
+          'line-color': '#b45309',
+          'line-width': 1.5
+        }
+      });
+
+      map.on('click', 'parks-fill', (event) => {
+        const park = event.features[0].properties;
+
+        new maplibregl.Popup()
+          .setLngLat(event.lngLat)
+          .setText([
+            park.PMA_NAME || park.NAME || 'Park property',
+            'Address: ' + (park.ADDRESS || 'Not listed'),
+            'Source: City of Seattle park boundaries',
+            'Green canopy layer: 2021'
+          ].join('\n'))
+          .addTo(map);
+      });
+
+      map.on('mouseenter', 'parks-fill', () => {
+        map.getCanvas().style.cursor = 'pointer';
+      });
+
+      map.on('mouseleave', 'parks-fill', () => {
+        map.getCanvas().style.cursor = '';
+      });
+
+      document.getElementById('park-control').hidden = false;
+
+      document.getElementById('show-parks')
+        .addEventListener('change', (event) => {
+          const visibility =
+            event.target.checked ? 'visible' : 'none';
+
+          map.setLayoutProperty(
+            'parks-fill', 'visibility', visibility
+          );
+
+          map.setLayoutProperty(
+            'parks-outline', 'visibility', visibility
+          );
+        });
 
       document.getElementById('status').textContent =
-        'Step 2: check your Studio basemap; pan and zoom.';
+        'Click a park to read its name and address.';
     });
   </script>
 </body>
