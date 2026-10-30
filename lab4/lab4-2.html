@@ -121,6 +121,7 @@
       maxZoom: 19
     });
 
+    // Register before requesting the class data.
     const mapReady = new Promise(function (resolve) {
       map.once('load', resolve);
     });
@@ -137,9 +138,6 @@
 
     // Step 3.2: request the CSV.
     $(document).ready(function () {
-      document.getElementById('status').textContent =
-        'Loading class data…';
-
       $.ajax({
         type: 'GET',
         url: 'https://docs.google.com/spreadsheets/d/12rOwVWdC0tXeS-peDuKQ7i9CtUEMnC1QoVJ3QZcZMu8/gviz/tq?tqx=out:csv&sheet=Sheet1',
@@ -178,13 +176,13 @@
     }
 
     function addPokemonLayers(data) {
-      // Step 3.3: shared source.
+      // Step 3.3: shared source for both views.
       map.addSource('pokemon', {
         type: 'geojson',
         data: data
       });
 
-      // Step 3.4: heatmap.
+      // Step 3.4: customized equal-weight heatmap.
       map.addLayer({
         id: 'pokemon-heat',
         type: 'heatmap',
@@ -195,23 +193,20 @@
         },
 
         paint: {
-          // Equal weight per encounter; default weight is 1.
-          'heatmap-intensity': [
-            'interpolate', ['linear'], ['zoom'],
-            13, 1,
-            17, 3
-          ],
+          // Default weight remains 1 per encounter.
+          'heatmap-intensity': 0.9,
 
-          // Radius trial 1: 10 pixels.
           'heatmap-radius': 10,
 
+          // Customized purple-pink-orange-yellow color ramp.
           'heatmap-color': [
             'interpolate', ['linear'], ['heatmap-density'],
-            0, 'rgba(236,222,239,0)',
-            0.2, 'rgb(208,209,230)',
-            0.4, 'rgb(166,189,219)',
-            0.6, 'rgb(103,169,207)',
-            0.8, 'rgb(28,144,153)'
+            0, 'rgba(84,39,143,0)',
+            0.2, '#54278f',
+            0.4, '#9e9ac8',
+            0.6, '#df65b0',
+            0.8, '#ff8c69',
+            1, '#ffe082'
           ],
 
           'heatmap-opacity': 0.85
@@ -232,7 +227,7 @@
         }
       });
 
-      // Step 3.6: name and photo popup.
+      // Step 3.6: Pokemon name and photo.
       map.on('click', 'pokemon-points', function (event) {
         const feature = event.features[0];
 
@@ -249,7 +244,7 @@
           .addTo(map);
       });
 
-      // Step 3.7: view controls and encounter count.
+      // Step 3.7: enable Points / Heatmap controls.
       document.querySelectorAll('[data-view]').forEach(function (button) {
         button.disabled = false;
 
