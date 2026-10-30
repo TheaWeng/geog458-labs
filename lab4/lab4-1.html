@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Lab 4 — Pittsburgh trees</title>
+  <title>Lab 4 — Pittsburgh trees | Thea Weng</title>
 
   <link
     href="https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.css"
@@ -34,7 +34,7 @@
 
     const map = new mapboxgl.Map({
       container: 'map',
-      style: 'mapbox://styles/mapbox/dark-v11',
+      style: 'mapbox://styles/mapbox/light-v11',
       projection: 'globe',
       center: [-79.999732, 40.4374],
       zoom: 11,
@@ -45,12 +45,14 @@
     map.addControl(new mapboxgl.NavigationControl());
 
     map.on('load', () => {
-      // Step 1.3: tree data source.
+      // Step 1.3: Pittsburgh tree source.
       map.setFog({});
 
       map.addSource('trees', {
         type: 'geojson',
-        data: 'data/trees.geojson'
+        data: 'data/trees.geojson',
+        attribution:
+          'Pittsburgh street trees: Western Pennsylvania Regional Data Center; map by Thea Weng'
       });
 
       // Step 1.4: DBH-weighted heatmap.
@@ -61,6 +63,7 @@
         maxzoom: 15,
 
         paint: {
+          // Retain the tutorial's DBH weighting.
           'heatmap-weight': {
             property: 'dbh',
             type: 'exponential',
@@ -70,23 +73,26 @@
             ]
           },
 
+          // Changed from 1 to 0.6 at comparison zoom 11.
           'heatmap-intensity': {
             stops: [
-              [11, 1],
-              [15, 3]
+              [11, 0.6],
+              [15, 1.8]
             ]
           },
 
+          // Customized yellow-orange-red color ramp.
           'heatmap-color': [
             'interpolate', ['linear'], ['heatmap-density'],
-            0, 'rgba(236,222,239,0)',
-            0.2, 'rgb(208,209,230)',
-            0.4, 'rgb(166,189,219)',
-            0.6, 'rgb(103,169,207)',
-            0.8, 'rgb(28,144,153)'
+            0, 'rgba(255,255,178,0)',
+            0.2, '#ffffb2',
+            0.4, '#fecc5c',
+            0.6, '#fd8d3c',
+            0.8, '#f03b20',
+            1, '#bd0026'
           ],
 
-          // Radius trial: 8 pixels at zoom 11.
+          // Changed from 15 to 8 pixels at comparison zoom 11.
           'heatmap-radius': {
             stops: [
               [11, 8],
@@ -94,6 +100,7 @@
             ]
           },
 
+          // Retain the transition to individual trees.
           'heatmap-opacity': {
             default: 1,
             stops: [
@@ -104,7 +111,7 @@
         }
       });
 
-      // Step 1.5: individual tree circles.
+      // Step 1.5: individual trees, drawn above the heatmap.
       map.addLayer({
         id: 'trees-point',
         type: 'circle',
@@ -127,13 +134,13 @@
             property: 'dbh',
             type: 'exponential',
             stops: [
-              [0, 'rgba(236,222,239,0)'],
-              [10, 'rgb(236,222,239)'],
-              [20, 'rgb(208,209,230)'],
-              [30, 'rgb(166,189,219)'],
-              [40, 'rgb(103,169,207)'],
-              [50, 'rgb(28,144,153)'],
-              [60, 'rgb(1,108,89)']
+              [0, 'rgba(255,255,178,0)'],
+              [10, '#ffffb2'],
+              [20, '#fecc5c'],
+              [30, '#fd8d3c'],
+              [40, '#f03b20'],
+              [50, '#bd0026'],
+              [60, '#800026']
             ]
           },
 
