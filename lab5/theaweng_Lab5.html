@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lab 5 — Seattle Vessel Trajectories | Thea Weng</title>
+
+  <link
+    href="https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.css"
+    rel="stylesheet">
+
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.js"></script>
+  <script src="https://unpkg.com/deck.gl@9.1.0/dist.min.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font: 14px/1.5 Arial, sans-serif;
+      color: #243442;
+    }
+
+    #map {
+      position: absolute;
+      inset: 0;
+    }
+
+    #panel {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      z-index: 10;
+      width: 290px;
+      max-width: calc(100vw - 80px);
+      max-height: calc(100vh - 100px);
+      overflow: auto;
+      padding: 18px;
+      background: white;
+      border-radius: 6px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 21px;
+    }
+
+    p {
+      margin: 10px 0;
+    }
+
+    label {
+      display: block;
+      margin-top: 14px;
+      font-weight: bold;
+    }
+
+    select {
+      width: 100%;
+      margin-top: 6px;
+      padding: 8px;
+      font: inherit;
+    }
+
+    button {
+      margin-top: 14px;
+      padding: 8px 20px;
+      background: #293d50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    #time-slider {
+      display: block;
+      width: 100%;
+      margin: 8px 0;
+      accent-color: #fd805d;
+    }
+
+    #time-display {
+      display: block;
+      font-weight: bold;
+    }
+
+    .note {
+      font-size: 12px;
+      color: #52616d;
+    }
+
+    a {
+      color: #315e85;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="map"></div>
+
+  <div id="panel">
+    <h1>Seattle Vessel Trajectories</h1>
+    <p>By Thea Weng</p>
+    <p>Seattle and nearby Puget Sound waters</p>
+    <p>Requested data: October 29, 2025 (UTC)</p>
+
+    <label for="vessel-type">Vessel type</label>
+    <select id="vessel-type" disabled>
+      <option value="passenger" selected>Passenger</option>
+      <option value="tanker">Tanker</option>
+      <option value="cargo">Cargo</option>
+      <option value="other">Other vessels</option>
+    </select>
+
+    <button id="play-stop" type="button"
+      aria-pressed="true" disabled>Stop</button>
+
+    <p>
+      Data time:
+      <time id="time-display">Loading date/time...</time>
+    </p>
+
+    <label for="time-slider">Data time (Seattle: PDT/PST)</label>
+    <input id="time-slider" type="range"
+      min="0" max="1" value="0" step="1" disabled>
+
+    <p id="status" role="status">Loading vessel data...</p>
+
+    <p class="note">
+      Orange trails show the previous hour of recorded movement.
+      Playback advances 15 minutes of data per real second.
+      Drag the time slider to pause and inspect a moment.
+    </p>
+
+    <p class="note">
+      Lines connect recorded AIS positions; gaps between reports
+      do not reveal the exact route traveled.
+      The final playback hour allows trails to fade.
+    </p>
+
+    <p class="note">
+      Source:
+      <a href="https://marinecadastre.gov/accessais/"
+        target="_blank" rel="noopener">MarineCadastre AccessAIS</a>.
+      Original timestamps are UTC; the clock shows Seattle local time.
+    </p>
+  </div>
+
+  <script>
+    mapboxgl.accessToken =
+      'pk.eyJ1IjoidGhlYXdlbmciLCJhIjoiY211enRxdXg1MGE1ZzJ3cHJiY25jd3AzeSJ9.hu6_p9WGMdUXAuteHViv2w';
+
+    const map = new mapboxgl.Map({
+      container: 'map',
+      style: 'mapbox://styles/mapbox/dark-v11',
+      projection: 'mercator',
+      center: [-122.38, 47.59],
+      zoom: 9.6
+    });
+
+    const mapReady = new Promise(resolve => {
+      map.once('load', resolve);
+    });
+
+    async function main() {
+      const status = document.getElementById('status');
+
+      const tripsResponse = await fetch('./ais_trips.json');
+
+      if (!tripsResponse.ok) {
+        throw new Error('Could not load ais_trips.json.');
+      }
+
+      const rawTrips = await tripsResponse.json();
+
+      // A path needs at least two recorded positions.
+      const trips = rawTrips.filter(d =>
+        Array.isArray(d.path) &&
+        Array.isArray(d.timestamps) &&
+        d.path.length >= 2 &&
+        d.path.length === d.timestamps.length
+      );
+
+      if (trips.length === 0) {
+        throw new Error('No paths with two or more positions.');
+      }
+
+      const startTime = Math.min(
+        ...trips.map(d => d.timestamps[0])
+      );
+
+      const lastObservation = Math.max(
+        ...trips.map(d => d.timestamps[d.timestamps.length - 1])
+      );
+
+      // Include one extra hour for the final trails to fade.
+      const endTime = lastObservation + 3600;
+
+      let currentTime = Math.min(
+        startTime + 3600,
+        lastObservation
+      );
+
+      let displayedTrips = [];
+      let playing = true;
+      let previousFrame = null;
+
+      const metadataResponse =
+        await fetch('./ais_trips_metadata.json');
+
+      if (!metadataResponse.ok) {
+        throw new Error('Could not load ais_trips_metadata.json.');
+      }
+
+      const metadata = await metadataResponse.json();
+      const timeOrigin = Date.parse(metadata.time_origin_utc);
+
+      if (!Number.isFinite(timeOrigin)) {
+        throw new Error('Invalid time_origin_utc in metadata.');
+      }
+
+      await mapReady;
+
+      const overlay = new deck.MapboxOverlay({
+        interleaved: false,
+        layers: []
+      });
+
+      map.addControl(overlay);
+
+      const timeDisplay = document.getElementById('time-display');
+      const timeSlider = document.getElementById('time-slider');
+
+      timeSlider.min = String(startTime);
+      timeSlider.max = String(endTime);
+      timeSlider.disabled = false;
+
+      const timeFormatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Los_Angeles',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hourCycle: 'h23',
+        timeZoneName: 'short'
+      });
+
+      function updateTimeUI() {
+        const date = new Date(
+          timeOrigin + Math.floor(currentTime) * 1000
+        );
+
+        timeDisplay.dateTime = date.toISOString();
+        timeDisplay.textContent = timeFormatter.format(date);
+        timeSlider.value = String(Math.floor(currentTime));
+
+        timeSlider.setAttribute(
+          'aria-valuetext',
+          timeDisplay.textContent
+        );
+      }
+
+      function draw() {
+        overlay.setProps({
+          layers: [
+            new deck.TripsLayer({
+              id: 'vessel-trips',
+              data: displayedTrips,
+              getPath: d => d.path,
+              getTimestamps: d => d.timestamps,
+              getColor: [253, 128, 93],
+              widthMinPixels: 2,
+              capRounded: true,
+              jointRounded: true,
+              opacity: 0.85,
+              trailLength: 3600,
+              currentTime: currentTime
+            })
+          ]
+        });
+
+        updateTimeUI();
+      }
+
+      const vesselType = document.getElementById('vessel-type');
+      vesselType.disabled = false;
+
+      function applyFilter() {
+        displayedTrips = trips.filter(d => {
+          const type = Number(d.type);
+
+          if (vesselType.value === 'passenger') {
+            return type >= 60 && type < 70;
+          }
+
+          if (vesselType.value === 'tanker') {
+            return type >= 80 && type < 90;
+          }
+
+          if (vesselType.value === 'cargo') {
+            return type >= 70 && type < 80;
+          }
+
+          return !(type >= 60 && type < 90);
+        });
+
+        status.textContent =
+          `${displayedTrips.length} paths selected`;
+
+        draw();
+      }
+
+      vesselType.addEventListener('change', applyFilter);
+      applyFilter();
+
+      const playStop = document.getElementById('play-stop');
+      playStop.disabled = false;
+
+      function setPlaying(value) {
+        playing = value;
+        previousFrame = null;
+
+        playStop.textContent = playing ? 'Stop' : 'Play';
+        playStop.setAttribute('aria-pressed', String(playing));
+      }
+
+      playStop.addEventListener('click', () => {
+        setPlaying(!playing);
+      });
+
+      timeSlider.addEventListener('input', () => {
+        setPlaying(false);
+        currentTime = Number(timeSlider.value);
+        draw();
+      });
+
+      // Advance 900 data seconds per real second.
+      function animate(frameTime) {
+        if (playing) {
+          if (previousFrame !== null) {
+            const elapsed = (frameTime - previousFrame) / 1000;
+            currentTime += elapsed * 900;
+
+            if (currentTime > endTime) {
+              currentTime = startTime +
+                (currentTime - startTime) % (endTime - startTime);
+            }
+          }
+
+          previousFrame = frameTime;
+          draw();
+        } else {
+          previousFrame = null;
+        }
+
+        requestAnimationFrame(animate);
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    main().catch(error => {
+      console.error(error);
+
+      document.getElementById('status').textContent =
+        error.message + ' Check the files and use Live Server.';
+    });
+  </script>
+</body>
+</html>
